@@ -11,16 +11,16 @@ from pysphere import *
 
 
 
-
 #Things for the user to set here
 vcenterip = "10.5.132.109"
-vcenteruser = "AWESOMESAUCE\mcowger"
-vcenterpass = "Habloo12"
+vcenteruser = "root"
+vcenterpass = "vmware"
+#vplexip = "10.5.44.171"
 vplexip = "10.5.132.105"
-vplexip = "10.64.188.52"
+#vplexip = "10.5.132.105"
 vplexuser = "service"
 vplexpass = "Mi@Dim7T"
-loggingLevel = logging.INFO # or logging.DEBUG
+loggingLevel = logging.CRITICAL # or logging.DEBUG
 #-------------------------
 
 
@@ -93,6 +93,7 @@ for cluster in clusterObj['response']['context'][0]['children']:
         viewObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/exports/storage-views/" + view['name'])
         volumes = viewObj['response']['context'][0]['attributes'][7]['value']
         for volume in volumes:
+            
             wwn = volume.split(",")[2].split(":")[1]
             lunid = volume.split(",")[0].replace("(","")
             name = volume.split(",")[1]
@@ -145,7 +146,61 @@ for ds_mor, name in server.get_datastores().items():
         logging.debug("Datastore " + name + " is not a VMFS (NFS?)")
 server.disconnect()
 
-pprint.pprint(LUNs)
+#pprint.pprint(LUNs)
+
+print "VPLEXWWN,VMwareMOR,DSName,VPLEXVVName,SymmMember1,SymmMember2,SymmMember3,SymmMember4,SymmMember5,SymmMember6,SymmMember7,SymmMember8"
+
+for WWN in LUNs.keys():
+    VPLEXWWN = WWN
+    VMwareMOR = LUNs[WWN]['VMwareMOR']
+    DSName = LUNs[WWN]['VMwareName']
+    VPLEXVVName = LUNs[WWN]['VPLEXName']
+    SymmID1 = ""
+    SymmID2 = ""
+    SymmID3 = ""
+    SymmID4 = ""
+    SymmID5 = ""
+    SymmID6 = ""
+    SymmID7 = ""
+    SymmID8 = ""
+    try:
+
+        SymmID1 = LUNs[WWN]['VPLEXmembers'][0]
+        if SymmID1.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID1)
+            SymmID1 = "/".join([sid,dev])
+        SymmID2 = LUNs[WWN]['VPLEXmembers'][1]
+        if SymmID2.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID2)
+            SymmID2 = "/".join([sid,dev])
+        SymmID3 = LUNs[WWN]['VPLEXmembers'][2]
+        if SymmID3.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID3)
+            SymmID3 = "/".join([sid,dev])
+        SymmID4 = LUNs[WWN]['VPLEXmembers'][3]
+        if SymmID4.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID4)
+            SymmID4 = "/".join([sid,dev])
+        SymmID5 = LUNs[WWN]['VPLEXmembers'][4]
+        if SymmID5.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID5)
+            SymmID5 = "/".join([sid,dev])
+        SymmID6 = LUNs[WWN]['VPLEXmembers'][5]
+        if SymmID6.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID6)
+            SymmID6 = "/".join([sid,dev])
+        SymmID7 = LUNs[WWN]['VPLEXmembers'][6]
+        if SymmID7.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID7)
+            SymmID7 = "/".join([sid,dev])
+        SymmID8 = LUNs[WWN]['VPLEXmembers'][7]
+        if SymmID8.startswith("6000097"):
+            sid,dev = decodeWWID(SymmID8)
+            SymmID8 = "/".join([sid,dev])
+    except:
+        pass
+    
+    print ",".join([VPLEXWWN,VMwareMOR,DSName,VPLEXVVName,SymmID1,SymmID2,SymmID3,SymmID4,SymmID5,SymmID6,SymmID7,SymmID8])
 
 # logging.debug("Finding VNX and Symmetrix Member Devices in the List")
 # 
