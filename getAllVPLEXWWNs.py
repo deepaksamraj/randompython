@@ -21,7 +21,7 @@ vplexip = "10.5.132.105"
 #vplexip = "10.5.132.105"
 vplexuser = "service"
 vplexpass = "Mi@Dim7T"
-loggingLevel = logging.DEBUG # or logging.DEBUG
+loggingLevel = logging.CRITICAL # or logging.DEBUG
 #-------------------------
 
 
