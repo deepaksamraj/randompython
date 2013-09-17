@@ -5,6 +5,7 @@ import requests
 import pprint
 import sys
 import logging
+from pyxml2obj import XMLin, XMLout
 from pysphere import *
 
 
@@ -20,7 +21,7 @@ vplexip = "10.5.132.105"
 #vplexip = "10.5.132.105"
 vplexuser = "service"
 vplexpass = "Mi@Dim7T"
-loggingLevel = logging.CRITICAL # or logging.DEBUG
+loggingLevel = logging.DEBUG # or logging.DEBUG
 #-------------------------
 
 
@@ -93,7 +94,6 @@ for cluster in clusterObj['response']['context'][0]['children']:
         viewObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/exports/storage-views/" + view['name'])
         volumes = viewObj['response']['context'][0]['attributes'][7]['value']
         for volume in volumes:
-            
             wwn = volume.split(",")[2].split(":")[1]
             lunid = volume.split(",")[0].replace("(","")
             name = volume.split(",")[1]
@@ -114,7 +114,9 @@ for cluster in clusterObj['response']['context'][0]['children']:
                 svolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/storage-volumes/" + storagevol)
                 wwnOfBackingDevice = svolObj['response']['context'][0]['attributes'][-6]['value'].split(":")[1]
                 logging.info("WWN for device backing " + storagevol + ":" + extentname + ":" + supportingdev + ":" + name + " found: " + wwnOfBackingDevice)
-                
+                if wwnOfBackingDevice.startswith("6000097"):
+                    sid,dev = decodeWWID(wwnOfBackingDevice)
+                    wwnOfBackingDevice = "/".join(["Symm:",sid,dev])
                 LUNs[wwn]['VPLEXmembers'].append(wwnOfBackingDevice)
 
             
@@ -128,6 +130,17 @@ logging.warning("Retrieving vSphere Info")
 logging.info("Connecting to vSphere: " + vcenterip)
 server.connect(vcenterip, vcenteruser, vcenterpass)
 
+logging.debug("Collecting data for Datastore->VM Mapping")
+DSs = {}
+for ds, name in server.get_datastores().items():
+    props = VIProperty(server, ds)
+    DSs[name] = []
+    logging.debug("Recording VMs for DS: " + name)
+    for vm in props.vm:
+        logging.debug("Adding VM to DS list for DS " + name + ":" + vm.name)
+        DSs[name].append(vm.name)
+
+
 for ds_mor, name in server.get_datastores().items(): 
     props = VIProperty(server, ds_mor)
     name = props.info.name
@@ -140,67 +153,88 @@ for ds_mor, name in server.get_datastores().items():
             LUNs[id]["VMwareName"] = name
             LUNs[id]["VMwareMOR"] = ds_mor
             logging.info("Mapped " + LUNs[id]['VPLEXName'] + " to " + name + " as " + id)
+            LUNs[id]["VirtualMachines"] = []
+            logging.debug("Adding LUNs from DS list:")
+            logging.debug(DSs[name])
+            LUNs[id]["VirtualMachines"].extend(DSs[name])
         else:
             logging.debug("Not Found - no mapping performed")
     except AttributeError:
-        logging.debug("Datastore " + name + " is not a VMFS (NFS?)")
+        logging.debug("Datastore " + name + " is not a VMFS (NFS or Local CDROM?)")
 server.disconnect()
+
+
+wholeXML = XMLout(LUNs)
+
+print wholeXML
 
 #pprint.pprint(LUNs)
 
-print "VPLEXWWN,VMwareMOR,DSName,VPLEXVVName,SymmMember1,SymmMember2,SymmMember3,SymmMember4,SymmMember5,SymmMember6,SymmMember7,SymmMember8"
+#print "VPLEXWWN,VMwareMOR,DSName,VPLEXVVName,SymmMember1,SymmMember2,SymmMember3,SymmMember4,SymmMember5,SymmMember6,SymmMember7,SymmMember8"
 
-for WWN in LUNs.keys():
-    VPLEXWWN = WWN
-    VMwareMOR = LUNs[WWN]['VMwareMOR']
-    DSName = LUNs[WWN]['VMwareName']
-    VPLEXVVName = LUNs[WWN]['VPLEXName']
-    SymmID1 = ""
-    SymmID2 = ""
-    SymmID3 = ""
-    SymmID4 = ""
-    SymmID5 = ""
-    SymmID6 = ""
-    SymmID7 = ""
-    SymmID8 = ""
-    try:
-
-        SymmID1 = LUNs[WWN]['VPLEXmembers'][0]
-        if SymmID1.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID1)
-            SymmID1 = "/".join([sid,dev])
-        SymmID2 = LUNs[WWN]['VPLEXmembers'][1]
-        if SymmID2.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID2)
-            SymmID2 = "/".join([sid,dev])
-        SymmID3 = LUNs[WWN]['VPLEXmembers'][2]
-        if SymmID3.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID3)
-            SymmID3 = "/".join([sid,dev])
-        SymmID4 = LUNs[WWN]['VPLEXmembers'][3]
-        if SymmID4.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID4)
-            SymmID4 = "/".join([sid,dev])
-        SymmID5 = LUNs[WWN]['VPLEXmembers'][4]
-        if SymmID5.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID5)
-            SymmID5 = "/".join([sid,dev])
-        SymmID6 = LUNs[WWN]['VPLEXmembers'][5]
-        if SymmID6.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID6)
-            SymmID6 = "/".join([sid,dev])
-        SymmID7 = LUNs[WWN]['VPLEXmembers'][6]
-        if SymmID7.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID7)
-            SymmID7 = "/".join([sid,dev])
-        SymmID8 = LUNs[WWN]['VPLEXmembers'][7]
-        if SymmID8.startswith("6000097"):
-            sid,dev = decodeWWID(SymmID8)
-            SymmID8 = "/".join([sid,dev])
-    except:
-        pass
+#for WWN in LUNs.keys():
+#    me = ''
     
-    print ",".join([VPLEXWWN,VMwareMOR,DSName,VPLEXVVName,SymmID1,SymmID2,SymmID3,SymmID4,SymmID5,SymmID6,SymmID7,SymmID8])
+    # VPLEXWWN = WWN
+#     VMwareMOR = LUNs[WWN]['VMwareMOR']
+#     DSName = LUNs[WWN]['VMwareName']
+#     VPLEXVVName = LUNs[WWN]['VPLEXName']
+#     SymmID1 = ""
+#     SymmID2 = ""
+#     SymmID3 = ""
+#     SymmID4 = ""
+#     SymmID5 = ""
+#     SymmID6 = ""
+#     SymmID7 = ""
+#     SymmID8 = ""
+#     try:
+# 
+#         SymmID1 = LUNs[WWN]['VPLEXmembers'][0]
+#         if SymmID1.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID1)
+#             SymmID1 = "/".join([sid,dev])
+#         SymmID2 = LUNs[WWN]['VPLEXmembers'][1]
+#         if SymmID2.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID2)
+#             SymmID2 = "/".join([sid,dev])
+#         SymmID3 = LUNs[WWN]['VPLEXmembers'][2]
+#         if SymmID3.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID3)
+#             SymmID3 = "/".join([sid,dev])
+#         SymmID4 = LUNs[WWN]['VPLEXmembers'][3]
+#         if SymmID4.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID4)
+#             SymmID4 = "/".join([sid,dev])
+#         SymmID5 = LUNs[WWN]['VPLEXmembers'][4]
+#         if SymmID5.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID5)
+#             SymmID5 = "/".join([sid,dev])
+#         SymmID6 = LUNs[WWN]['VPLEXmembers'][5]
+#         if SymmID6.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID6)
+#             SymmID6 = "/".join([sid,dev])
+#         SymmID7 = LUNs[WWN]['VPLEXmembers'][6]
+#         if SymmID7.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID7)
+#             SymmID7 = "/".join([sid,dev])
+#         SymmID8 = LUNs[WWN]['VPLEXmembers'][7]
+#         if SymmID8.startswith("6000097"):
+#             sid,dev = decodeWWID(SymmID8)
+#             SymmID8 = "/".join([sid,dev])
+#     except:
+#         pass
+#     
+#     print ",".join([VPLEXWWN,VMwareMOR,DSName,VPLEXVVName,SymmID1,SymmID2,SymmID3,SymmID4,SymmID5,SymmID6,SymmID7,SymmID8])
+
+
+
+
+
+#for ds, name in server.get_datastores().items():
+#    props = VIProperty(server, ds)
+#    for vm in props.vm:
+#        print vm.name,
+
 
 # logging.debug("Finding VNX and Symmetrix Member Devices in the List")
 # 

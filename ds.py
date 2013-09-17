@@ -1,11 +1,14 @@
-import sys
+import pprint
 from pysphere import *
 server = VIServer()
-server.connect("192.168.56.128", "root", "vmware")
-lines = []
+server.connect("10.5.132.109", "root", "vmware")
+
+DSs = {}
+
 for ds, name in server.get_datastores().items():
     props = VIProperty(server, ds)
-    curline = name
+    DSs[name] = []
     for vm in props.vm:
-        curline = curline + "," + vm.name
-    print curline
+        DSs[name].append(vm.name)
+pprint.pprint(DSs)
+
