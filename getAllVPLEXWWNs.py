@@ -13,15 +13,15 @@ from pysphere import *
 
 
 #Things for the user to set here
-vcenterip = "10.5.132.109"
-vcenteruser = "root"
-vcenterpass = "vmware"
+vcenterip = "10.113.61.16"
+vcenteruser = "storagevcmon"
+vcenterpass = "V1!2tU@7Mo!7iT0RiN6"
 #vplexip = "10.5.44.171"
-vplexip = "10.5.132.105"
+vplexip = "10.113.192.140"
 #vplexip = "10.5.132.105"
 vplexuser = "service"
 vplexpass = "Mi@Dim7T"
-loggingLevel = logging.CRITICAL # or logging.DEBUG
+loggingLevel = logging.DEBUG # or logging.DEBUG
 #-------------------------
 
 
@@ -109,10 +109,10 @@ for cluster in clusterObj['response']['context'][0]['children']:
                 extentname = extent['name']
                 logging.info("Searching for extent " + extent['name'] + "as part of " + supportingdev + " for virtual " + name) 
                 storagevolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/extents/" + extentname)
-                storagevol = storagevolObj['response']['context'][0]['attributes'][-6]['value']
+                storagevol = storagevolObj['response']['context'][0]['attributes'][-7]['value']
                 logging.debug("ID'd" + pprint.pformat(storagevol))
                 svolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/storage-volumes/" + storagevol)
-                wwnOfBackingDevice = svolObj['response']['context'][0]['attributes'][-6]['value'].split(":")[1]
+                wwnOfBackingDevice = svolObj['response']['context'][0]['attributes'][-7]['value'].split(":")[1]
                 logging.info("WWN for device backing " + storagevol + ":" + extentname + ":" + supportingdev + ":" + name + " found: " + wwnOfBackingDevice)
                 if wwnOfBackingDevice.startswith("6000097"):
                     sid,dev = decodeWWID(wwnOfBackingDevice)
