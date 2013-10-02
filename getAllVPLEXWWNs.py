@@ -13,14 +13,17 @@ from pysphere import *
 
 
 #Things for the user to set here
-vcenterip = "10.113.61.16"
-vcenteruser = "storagevcmon"
-vcenterpass = "V1!2tU@7Mo!7iT0RiN6"
+#vcenterip = "10.113.61.16"
+#vcenteruser = "storagevcmon"
+#vcenterpass = "V1!2tU@7Mo!7iT0RiN6"
 #vplexip = "10.5.44.171"
-vplexip = "10.113.192.140"
-#vplexip = "10.5.132.105"
+#vplexip = "10.113.192.140"
+vplexip = "10.5.132.105"
 vplexuser = "service"
 vplexpass = "Mi@Dim7T"
+vcenterip = "10.5.132.109"
+vcenteruser = "root"
+vcenterpass = "vmware"
 loggingLevel = logging.DEBUG # or logging.DEBUG
 #-------------------------
 
@@ -82,43 +85,44 @@ def gimmeSomeJSON(URL):
 
 #First Get the list of all clusters
 
-
-
 clusterObj = gimmeSomeJSON(baseURL + "/clusters")
 
-for cluster in clusterObj['response']['context'][0]['children']:
-    logging.info("Processing cluster: " + cluster['name'] + " of " + str(len(clusterObj['response']['context'][0]['children'])))
-    viewsObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/exports/storage-views")
-    for view in viewsObj['response']['context'][0]['children']:
-        logging.info("    Processing view: " + view['name'])
-        viewObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/exports/storage-views/" + view['name'])
-        volumes = viewObj['response']['context'][0]['attributes'][7]['value']
-        for volume in volumes:
-            wwn = volume.split(",")[2].split(":")[1]
-            lunid = volume.split(",")[0].replace("(","")
-            name = volume.split(",")[1]
-            logging.info("        Processing " + "volume: " + volume.split(",")[1])
-            LUNs[wwn] = {"VPLEXName":name}
-            virtualvolumeObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/virtual-volumes/" + name)
-            supportingdev = virtualvolumeObj['response']['context'][0]['attributes'][-3]['value']
-            logging.debug("supporting device for " + name + ": " + pprint.pformat(supportingdev))
-            deviceObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/devices/" + supportingdev + "/components/")
-            suppdevices = deviceObj['response']['context'][0]['children']
-            LUNs[wwn]['VPLEXmembers'] = []
-            for extent in suppdevices:
-                extentname = extent['name']
-                logging.info("Searching for extent " + extent['name'] + "as part of " + supportingdev + " for virtual " + name) 
-                storagevolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/extents/" + extentname)
-                storagevol = storagevolObj['response']['context'][0]['attributes'][-7]['value']
-                logging.debug("ID'd" + pprint.pformat(storagevol))
-                svolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/storage-volumes/" + storagevol)
-                wwnOfBackingDevice = svolObj['response']['context'][0]['attributes'][-7]['value'].split(":")[1]
-                logging.info("WWN for device backing " + storagevol + ":" + extentname + ":" + supportingdev + ":" + name + " found: " + wwnOfBackingDevice)
-                if wwnOfBackingDevice.startswith("6000097"):
-                    sid,dev = decodeWWID(wwnOfBackingDevice)
-                    wwnOfBackingDevice = "/".join(["Symm:",sid,dev])
-                LUNs[wwn]['VPLEXmembers'].append(wwnOfBackingDevice)
-
+try:
+    for cluster in clusterObj['response']['context'][0]['children']:
+        logging.info("Processing cluster: " + cluster['name'] + " of " + str(len(clusterObj['response']['context'][0]['children'])))
+        viewsObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/exports/storage-views")
+        for view in viewsObj['response']['context'][0]['children']:
+            logging.info("    Processing view: " + view['name'])
+            viewObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/exports/storage-views/" + view['name'])
+            volumes = viewObj['response']['context'][0]['attributes'][7]['value']
+            for volume in volumes:
+                wwn = volume.split(",")[2].split(":")[1]
+                lunid = volume.split(",")[0].replace("(","")
+                name = volume.split(",")[1]
+                logging.info("        Processing " + "volume: " + volume.split(",")[1])
+                LUNs[wwn] = {"VPLEXName":name}
+                virtualvolumeObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/virtual-volumes/" + name)
+                supportingdev = virtualvolumeObj['response']['context'][0]['attributes'][-3]['value']
+                logging.debug("supporting device for " + name + ": " + pprint.pformat(supportingdev))
+                deviceObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/devices/" + supportingdev + "/components/")
+                suppdevices = deviceObj['response']['context'][0]['children']
+                LUNs[wwn]['VPLEXmembers'] = []
+                for extent in suppdevices:
+                    extentname = extent['name']
+                    logging.info("Searching for extent " + extent['name'] + "as part of " + supportingdev + " for virtual " + name) 
+                    storagevolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/extents/" + extentname)
+                    storagevol = storagevolObj['response']['context'][0]['attributes'][-7]['value']
+                    logging.debug("ID'd" + pprint.pformat(storagevol))
+                    svolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/storage-volumes/" + storagevol)
+                    wwnOfBackingDevice = svolObj['response']['context'][0]['attributes'][-7]['value'].split(":")[1]
+                    logging.info("WWN for device backing " + storagevol + ":" + extentname + ":" + supportingdev + ":" + name + " found: " + wwnOfBackingDevice)
+                    if wwnOfBackingDevice.startswith("6000097"):
+                        sid,dev = decodeWWID(wwnOfBackingDevice)
+                        wwnOfBackingDevice = "/".join(["Symm:",sid,dev])
+                    LUNs[wwn]['VPLEXmembers'].append(wwnOfBackingDevice)
+except:
+    print("Exception occured - exiting VPLEX block")
+    pass
             
         
 
