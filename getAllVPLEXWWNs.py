@@ -5,33 +5,27 @@ import requests
 import pprint
 import sys
 import logging
+import ConfigParser
 from pyxml2obj import XMLin, XMLout
 from pysphere import *
 
 
 
+config = ConfigParser.ConfigParser()
+config.read("vplex.cfg")
 
 
-#Things for the user to set here
-#vcenterip = "10.113.61.16"
-#vcenteruser = "storagevcmon"
-#vcenterpass = "V1!2tU@7Mo!7iT0RiN6"
-#vplexip = "10.5.44.171"
-#vplexip = "10.113.192.140"
-vplexip = "10.5.132.105"
-vplexuser = "service"
-vplexpass = "Mi@Dim7T"
-vcenterip = "10.5.132.109"
-vcenteruser = "root"
-vcenterpass = "vmware"
-loggingLevel = logging.DEBUG # or logging.DEBUG
+if config.get("OTHER","loglevel") == 'DEBUG':
+    loggingLevel = logging.DEBUG # or logging.DEBUG
+else:
+    loggingLevel = logging.CRITICAL # or logging.DEBUG
 #-------------------------
 
 
 logging.basicConfig(level=loggingLevel, format='%(asctime)s - %(levelname)s - %(message)s')
-headers = {'username':vplexuser,'password':vplexpass}
+headers = {'username':config.get("VPLEX","vplexuser"),'password':config.get("VPLEX","vplexpass")}
 LUNs = {}
-baseURL = "https://" + vplexip + "/vplex"
+baseURL = "https://" + config.get("VPLEX","vplexip") + "/vplex"
 
 logging.warning("Retrieving VPLEX Info")
 
@@ -131,20 +125,23 @@ server = VIServer()
 #Connect to the server
 logging.warning("Retrieving vSphere Info")
 
-logging.info("Connecting to vSphere: " + vcenterip)
-server.connect(vcenterip, vcenteruser, vcenterpass)
+logging.info("Connecting to vSphere: " + config.get("VSPHERE","vcenterip"))
+server.connect(config.get("VSPHERE","vcenterip"), config.get("VSPHERE","vcenteruser"), config.get("VSPHERE","vcenterpass"))
 
-logging.debug("Collecting data for Datastore->VM Mapping")
-DSs = {}
-for ds, name in server.get_datastores().items():
-    props = VIProperty(server, ds)
-    DSs[name] = []
-    logging.debug("Recording VMs for DS: " + name)
-    for vm in props.vm:
-        logging.debug("Adding VM to DS list for DS " + name + ":" + vm.name)
-        DSs[name].append(vm.name)
+try:
+    logging.debug("Collecting data for Datastore->VM Mapping")
+    DSs = {}
+    for ds, name in server.get_datastores().items():
+        props = VIProperty(server, ds)
+        DSs[name] = []
+        logging.debug("Recording VMs for DS: " + name)
+        for vm in props.vm:
+            logging.debug("Adding VM to DS list for DS " + name + ":" + vm.name)
+            DSs[name].append(vm.name)
+except:
+    print("Excited from VM collection process...")
 
-
+#Do the mapping
 for ds_mor, name in server.get_datastores().items(): 
     props = VIProperty(server, ds_mor)
     name = props.info.name
