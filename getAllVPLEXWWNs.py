@@ -79,8 +79,14 @@ def gimmeSomeJSON(URL):
 
 #First Get the list of all clusters
 
-clusterObj = gimmeSomeJSON(baseURL + "/clusters")
 
+logging.debug("Retrieving all storage volumes (for status reporting)")
+allVolumes = gimmeSomeJSON(baseURL + "/clusters/cluster-1/storage-elements/extents")
+extentsCount = len(allVolumes['response']['context'][0]['children'])
+
+logging.debug("There are " + str(extentsCount) + " in the system")
+curvol = 1
+clusterObj = gimmeSomeJSON(baseURL + "/clusters")
 try:
     for cluster in clusterObj['response']['context'][0]['children']:
         logging.info("Processing cluster: " + cluster['name'] + " of " + str(len(clusterObj['response']['context'][0]['children'])))
@@ -107,6 +113,8 @@ try:
                     storagevolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/extents/" + extentname)
                     storagevol = storagevolObj['response']['context'][0]['attributes'][-7]['value']
                     logging.debug("ID'd" + pprint.pformat(storagevol))
+                    curvol += 1
+                    logging.debug("Working on extent " + str(curvol) + " of " + str(extentsCount))
                     svolObj = gimmeSomeJSON(baseURL + "/clusters/" + cluster['name'] + "/storage-elements/storage-volumes/" + storagevol)
                     wwnOfBackingDevice = svolObj['response']['context'][0]['attributes'][-7]['value'].split(":")[1]
                     logging.info("WWN for device backing " + storagevol + ":" + extentname + ":" + supportingdev + ":" + name + " found: " + wwnOfBackingDevice)
