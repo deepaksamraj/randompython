@@ -11,6 +11,7 @@ from pysphere import *
 
 
 
+
 config = ConfigParser.ConfigParser()
 config.read("vplex.cfg")
 
@@ -175,6 +176,9 @@ server.disconnect()
 
 wholeXML = XMLout(LUNs)
 
-print wholeXML
+logging.debug(wholeXML)
+f = open(config.get("OTHER","outputfile"),'w')
+f.write(wholeXML)
+f.close()
 
 
